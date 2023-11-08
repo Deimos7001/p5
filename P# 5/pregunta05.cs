@@ -1,42 +1,87 @@
-using System.Collections;  
-using System;              
-using System.Threading;    
+using System; // Importa el espacio de nombres System
+using System.Collections.Generic; // Importa el espacio de nombres System.Collections.Generic
+using System.Linq; // Importa el espacio de nombres System.Linq
+using System.Text; // Importa el espacio de nombres System.Text
+using System.Threading.Tasks; // Importa el espacio de nombres System.Threading.Tasks
+using System.Threading; // Importa el espacio de nombres System.Threading
 
 //INF-317 - 1ER EXAMEN PARCIAL
 //NOMBRE: VICTOR GABRIEL CAPIA ALI
 //CI: 4762494 LP
 //PREGUNTA 5. La numeral 4 (PREGUNTA 4) con NET manejando hilos
 
-class Program
+namespace ConsoleApplication1 // Define un espacio de nombres llamado ConsoleApplication1
 {
-    static void Serie(object state)  // Define un método llamado 'Serie' que acepta un objeto 'state' como argumento.
+    class Program // Define una clase llamada Program
     {
-        var valores = (Tuple<long, long>)state;  // Convierte 'state' en una tupla de dos valores long.
-        long a = valores.Item1;  // Obtiene el primer valor de la tupla.
-        long b = valores.Item2;  // Obtiene el segundo valor de la tupla.
-
-        long resultado1 = (a * a) + 1;  
-        long resultado2 = 2 * b;        
-
-        Console.WriteLine(resultado1);  // Imprime resultado1 en la consola.
-        Console.WriteLine(resultado2);  // Imprime resultado2 en la consola.
-    }
-
-    static void Main()  // Define el método principal 'Main'.
-    {
-        int inicio = 1;     // Define una variable 'inicio' con el valor 1.
-        int fin = 10000;     // Define una variable 'fin' con el valor 5000.
-
-        for (int i = inicio; i <= fin/2; i++)  // Un bucle que va desde 'inicio' hasta 'fin'.
+        static void Main() // El método principal del programa
         {
-            long x = i;  // Asigna el valor de 'i' a la variable 'x'.
-            long y = i;  // Asigna el valor de 'i' a la variable 'y'.
-            ThreadPool.QueueUserWorkItem(Serie, new Tuple<long, long>(x, y));  // Agrega un trabajo en el ThreadPool para ejecutar el método 'Serie' con los argumentos 'x' y 'y'.
-            // Pausa el hilo actual durante 1 milisegundo 
-            //para mantener la secuecia de la serie 2,2,3,4,10,6,.
-            Thread.Sleep(1);  
-        }
+            // Definimos la frase original
+            string frase = "tres tristes tigres trigaban trigo por culpa del bolivar";
 
-        Console.ReadKey();  // Espera a que el usuario presione una tecla antes de finalizar la ejecución.
+            // Definimos las cadenas para las dos frases resultantes
+            StringBuilder frase1 = new StringBuilder();
+            StringBuilder frase2 = new StringBuilder();
+
+            // Definimos un arreglo para almacenar las palabras
+            string[] palabras = new string[20];
+            int num_palabras = 0;
+
+            // Tokenizar la frase original
+            string[] tokens = frase.Split(' '); // Divide la frase en palabras utilizando un espacio como delimitador
+            foreach (string token in tokens)
+            {
+                palabras[num_palabras] = token; // Almacena la palabra en el arreglo
+                num_palabras++; // Incrementa el contador de palabras
+            }
+
+            // Crear dos hilos para dividir las palabras
+            Thread thread1 = new Thread(() =>
+            {
+                for (int i = 0; i < num_palabras; i += 2)
+                {
+                    lock (frase1) // Bloquea la variable frase1 para evitar conflictos de escritura entre hilos
+                    {
+                        frase1.Append(palabras[i]); // Agrega la palabra a la primera frase
+                        frase1.Append(" "); // Agrega un espacio después de la palabra
+                    }
+                }
+            });
+
+            Thread thread2 = new Thread(() =>
+            {
+                for (int i = 1; i < num_palabras; i += 2)
+                {
+                    lock (frase2) // Bloquea la variable frase2 para evitar conflictos de escritura entre hilos
+                    {
+                        frase2.Append(palabras[i]); // Agrega la palabra a la segunda frase
+                        frase2.Append(" "); // Agrega un espacio después de la palabra
+                    }
+                }
+            });
+
+            // Crear un ManualResetEvent para esperar a que los hilos terminen
+            ManualResetEvent manualResetEvent = new ManualResetEvent(false);
+
+            // Manejar el evento cuando ambos hilos terminen
+            thread1.Start(); // Inicia el primer hilo
+            thread2.Start(); // Inicia el segundo hilo
+            ThreadPool.QueueUserWorkItem((state) =>
+            {
+                thread1.Join(); // Espera a que termine el primer hilo
+                thread2.Join(); // Espera a que termine el segundo hilo
+                manualResetEvent.Set(); // Establece el evento de reinicio manual para indicar que ambos hilos han terminado
+            });
+
+            // Esperar a que ambos hilos terminen
+            manualResetEvent.WaitOne(); // Espera a que el evento de reinicio manual se active (ambos hilos han terminado)
+
+            // Imprime las dos frases resultantes
+            Console.WriteLine("Frase 1: " + frase1.ToString()); // Imprime la primera frase
+            Console.WriteLine("Frase 2: " + frase2.ToString()); // Imprime la segunda frase
+
+            Console.WriteLine("Presiona cualquier tecla para salir...");
+            Console.ReadKey(); // Espera a que el usuario presione una tecla antes de salir
+        }
     }
 }
